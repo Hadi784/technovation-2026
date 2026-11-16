@@ -1,0 +1,283 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  STUDENT
+  JUDGE
+}
+
+enum ProjectStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+model User {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String         @unique @db.VarChar(320)
+  passwordHash  String
+  name          String         @db.VarChar(120)
+  role          Role
+  active        Boolean        @default(true)
+  student       Student?
+  judge         Judge?
+  sessions      Session[]
+  uploads       Upload[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([role, active])
+}
+
+model Session {
+  id        String   @id @db.Char(64)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Student {
+  id        Int       @id @default(autoincrement())
+  userId    String?   @unique @db.Uuid
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String    @db.VarChar(120)
+  grade     String    @default("") @db.VarChar(80)
+  campus    String    @default("") @db.VarChar(120)
+  bio       String    @default("")
+  photoId   String?   @unique @db.Uuid
+  photo     Upload?   @relation("StudentPhoto", fields: [photoId], references: [id], onDelete: SetNull)
+  isPublic  Boolean   @default(false)
+  projects  Project[]
+  projectMemberships ProjectMember[]
+  editingProject Project? @relation("AssignedProjectEditor")
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([isPublic, name])
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(120)
+  slug        String    @unique @db.VarChar(120)
+  description String    @default("")
+  active      Boolean   @default(true)
+  projects    Project[]
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+model Project {
+  id           Int               @id @default(autoincrement())
+  studentId    Int
+  student      Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  teamName     String            @default("") @db.VarChar(120)
+  editorStudentId Int?           @unique
+  editorStudent Student?         @relation("AssignedProjectEditor", fields: [editorStudentId], references: [id], onDelete: SetNull)
+  members      ProjectMember[]
+  categoryId   Int
+  category     Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  title        String            @db.VarChar(180)
+  summary      String            @default("")
+  overview     String            @default("")
+  objectives   String            @default("")
+  problem      String            @default("")
+  solution     String            @default("")
+  audience     String            @default("")
+  applications String            @default("")
+  technical    String            @default("")
+  journey      String            @default("")
+  contribution String            @default("")
+  teamMembers  String            @default("")
+  githubUrl    String            @default("")
+  demoUrl      String            @default("")
+  status       ProjectStatus     @default(DRAFT)
+  featured     Boolean           @default(false)
+  coverId      String?           @unique @db.Uuid
+  cover        Upload?           @relation("ProjectCover", fields: [coverId], references: [id], onDelete: SetNull)
+  media        ProjectMedia[]
+  documents    ProjectDocument[]
+  qrCode       QRCode?
+  assignments  JudgeAssignment[]
+  awards       Award[]
+  publishedAt  DateTime?         @db.Timestamptz(3)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime          @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([studentId])
+  @@index([categoryId, status])
+  @@index([status, publishedAt])
+}
+
+model Upload {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storageKey   String            @unique @db.Uuid
+  originalName String            @db.VarChar(255)
+  mimeType     String            @db.VarChar(120)
+  byteSize     Int
+  uploadedById String?           @db.Uuid
+  uploadedBy   User?             @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  studentPhoto Student?          @relation("StudentPhoto")
+  projectCover Project?          @relation("ProjectCover")
+  schoolLogo   Setting?          @relation("SchoolLogo")
+  media        ProjectMedia[]
+  documents    ProjectDocument[]
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([uploadedById, createdAt])
+}
+
+model ProjectMember {
+  projectId Int
+  studentId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, studentId])
+  @@index([studentId])
+}
+
+model ProjectMedia {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadId  String   @db.Uuid
+  upload    Upload   @relation(fields: [uploadId], references: [id], onDelete: Restrict)
+  caption   String   @default("") @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, uploadId])
+  @@index([uploadId])
+}
+
+model ProjectDocument {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadId  String   @db.Uuid
+  upload    Upload   @relation(fields: [uploadId], references: [id], onDelete: Restrict)
+  caption   String   @default("") @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, uploadId])
+  @@index([uploadId])
+}
+
+model Judge {
+  id          Int               @id @default(autoincrement())
+  userId      String            @unique @db.Uuid
+  user        User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  specialty   String            @default("") @db.VarChar(160)
+  assignments JudgeAssignment[]
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+model JudgeAssignment {
+  id              Int         @id @default(autoincrement())
+  judgeId         Int
+  judge           Judge       @relation(fields: [judgeId], references: [id], onDelete: Restrict)
+  projectId       Int
+  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  revisionAllowed Boolean     @default(false)
+  evaluation      Evaluation?
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@unique([judgeId, projectId])
+  @@index([projectId])
+}
+
+model Evaluation {
+  id                   Int             @id @default(autoincrement())
+  assignmentId         Int             @unique
+  assignment           JudgeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  innovation           Int             @db.SmallInt
+  technicalKnowledge   Int             @db.SmallInt
+  workingDemonstration Int             @db.SmallInt
+  creativity           Int             @db.SmallInt
+  problemSolving       Int             @db.SmallInt
+  presentation         Int             @db.SmallInt
+  total                Int             @db.SmallInt
+  strengths            String          @default("")
+  weaknesses           String          @default("")
+  feedback             String          @default("")
+  submittedAt          DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([submittedAt])
+}
+
+model QRCode {
+  id              Int      @id @default(autoincrement())
+  projectId       Int      @unique
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tokenHash       String   @unique @db.Char(64)
+  tokenCiphertext String
+  active          Boolean  @default(true)
+  scanCount       Int      @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+model Award {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String   @db.VarChar(160)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, title])
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String    @db.VarChar(160)
+  message   String
+  readAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   String?  @db.Uuid
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?  @db.VarChar(120)
+  details   Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([actorId, createdAt])
+  @@index([entity, entityId, createdAt])
+}
+
+model Setting {
+  id                 Int      @id @default(1)
+  logoId             String?  @unique @db.Uuid
+  logo               Upload?  @relation("SchoolLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  studentSubmissions Boolean  @default(false)
+  resultsPublished   Boolean  @default(false)
+  feedbackVisible    Boolean  @default(false)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+}
