@@ -108,11 +108,11 @@ function renderProjectResources(project, linkFor) {
     ${links.length ? `<ul class="project-resources">${links.join('')}</ul>` : ''}</section>`;
 }
 
-function teamMember(student, lead, linkFor) {
+function teamMember(student, role, linkFor) {
   const initials = student.name.trim().split(/\s+/).slice(0, 2).map((part) => [...part][0]).join('').toLocaleUpperCase();
-  const avatar = student.photo ? `<img src="${esc(linkFor(student.photo))}" alt="" loading="lazy" width="44" height="44">` :
+  const avatar = student.photo ? `<img class="team-avatar" src="${esc(linkFor(student.photo))}" alt="" loading="lazy" width="44" height="44">` :
     `<span class="team-initials" aria-hidden="true">${esc(initials)}</span>`;
-  return `<li>${avatar}<div><strong>${esc(student.name)}</strong>${lead ? '<small>Lead student</small>' : ''}</div></li>`;
+  return `<li>${avatar}<div><strong>${esc(student.name)}</strong>${role ? `<small>${role}</small>` : ''}</div></li>`;
 }
 
 export function projectDetail(req, project, linkFor = mediaHref) {
@@ -120,7 +120,8 @@ export function projectDetail(req, project, linkFor = mediaHref) {
   const team = people.length > 1 || Boolean(project.teamMembers);
   const sections = projectSections(project);
   const resources = renderProjectResources(project, linkFor);
-  const navigation = [...sections, ...(resources ? [{ id: 'resources', nav: 'Media' }] : []), { id: 'team', nav: team ? 'Team' : 'Student' }];
+  const teamLabel = team ? 'Project team' : 'Student';
+  const navigation = [{ id: 'team', nav: team ? 'Team' : 'Student' }, ...sections, ...(resources ? [{ id: 'resources', nav: 'Media' }] : [])];
   return layout(req, { title: project.title, kind: 'scan', body: `
     <article class="scan-project">
       <header class="project-masthead${project.cover ? ' has-cover' : ''}">
@@ -130,20 +131,26 @@ export function projectDetail(req, project, linkFor = mediaHref) {
             <h1>${esc(project.title)}</h1>
             ${project.summary ? `<p class="project-summary preserve-lines">${esc(project.summary)}</p>` : ''}
           </div>
+          <section class="project-team" id="team" aria-labelledby="team-title">
+            <header class="team-heading">
+              <span class="team-mark" aria-hidden="true">${icon('people', 20)}</span>
+              <div>
+                ${project.teamName ? `<p>${teamLabel}</p>` : ''}
+                <h2 id="team-title">${esc(project.teamName || teamLabel)}</h2>
+              </div>
+            </header>
+            <ul class="team-roster" role="list">
+              ${people.map((student, index) => teamMember(student, team ? (index === 0 ? 'Lead student' : 'Team member') : '', linkFor)).join('')}
+            </ul>
+            ${project.teamMembers && people.length === 1 ? `<p class="preserve-lines team-archived">${esc(project.teamMembers)}</p>` : ''}
+          </section>
           ${project.cover ? `<figure class="project-cover"><img src="${esc(linkFor(project.cover))}" alt="${esc(project.title)} – project cover" fetchpriority="high"></figure>` : ''}
         </div>
       </header>
       ${navigation.length > 1 ? `<nav class="project-index" aria-label="On this page"><div class="shell">
         ${navigation.map(({ id, nav }) => `<a href="#${id}">${nav}</a>`).join('')}
       </div></nav>` : ''}
-      <div class="shell project-columns">
-        ${sections.length || resources ? `<div class="project-detail">${renderProjectSections(sections)}${resources}</div>` : ''}
-        <section class="project-team" id="team">
-          ${sectionHeading(project.teamName || (team ? 'Project team' : 'Student'), 'people')}
-          <ul>${people.map((student, index) => teamMember(student, team && index === 0, linkFor)).join('')}</ul>
-          ${project.teamMembers && people.length === 1 ? `<p class="preserve-lines team-archived">${esc(project.teamMembers)}</p>` : ''}
-        </section>
-      </div>
+      ${sections.length || resources ? `<div class="shell project-detail">${renderProjectSections(sections)}${resources}</div>` : ''}
     </article>` });
 }
 
