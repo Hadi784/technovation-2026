@@ -28,7 +28,7 @@ For development, `npm run dev` restarts the application on file changes. If your
 ## Exhibition workflow
 
 1. Add students in **Students** and record consent for sharing the name or photo on QR project pages.
-2. In **Students → Project teams**, select **Create team** and choose a lead student and at least one registered teammate. Save to register the project and create its QR code. CSV imports require at least one additional student ID in `memberIds`. Separate multiple IDs with `|`.
+2. In **Students → Project teams**, select **Create team** and choose a lead student. Leave additional members blank for a solo project. Save to register the project and create its QR code. For group projects imported by CSV, add teammates in the optional `memberIds` column and separate multiple IDs with `|`.
 3. Open the team and designate one member under **Student editor**. Set the editor’s email and password and share them privately. The editor signs in at `/student/login` and can enter project details and upload media for that project while QR sharing is off. Staff can preview the work and enable QR sharing when every team member has recorded consent.
 4. In **QR labels**, download a PNG or print a label. Visitors can open a shared project using their phones’ camera apps. Turning off sharing preserves the label for reuse. Replacing the code invalidates the previous label.
 5. Download the branded PDF or CSV project register and lead-student participation certificates from **Reports**.
