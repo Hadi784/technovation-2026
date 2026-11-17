@@ -9,18 +9,11 @@ import { addAudit, categoryFilter, categoryOptions, checked, csvFields, csvInput
 const admin = '/admin/projects';
 const teams = '/admin/students/teams';
 const uploadImage = 'image/png,image/jpeg,image/webp';
-const detailGroups = [
-  ['Project overview', [
-    ['overview', 'Introduction'], ['objectives', 'Objectives'], ['problem', 'Problem statement'], ['solution', 'Proposed solution'],
-    ['audience', 'Target audience'], ['applications', 'Real-world applications']
-  ]],
-  ['Engineering case study', [
-    ['technical', 'Technical details', 'List the languages, frameworks, electronics, sensors, software, APIs, tools and architecture used.'],
-    ['journey', 'Development journey', 'Describe the idea, research, planning, design, implementation, testing and final result.'],
-    ['contribution', 'Individual contribution', 'Describe tasks, responsibilities, challenges, research, solutions and collaboration.']
-  ]]
+const detailFields = [
+  ['overview', 'Introduction'], ['objectives', 'Objectives'], ['problem', 'Problem statement'],
+  ['solution', 'Proposed solution'], ['audience', 'Target audience'], ['applications', 'Real-world applications'],
+  ['technical', 'Technical details'], ['journey', 'Development journey'], ['contribution', 'Individual contribution'],
 ];
-const detailFields = detailGroups.flatMap(([, fields]) => fields);
 const csvHeaders = ['projectId', 'studentId', 'memberIds', 'teamName', 'category', 'title', 'summary', ...detailFields.map(([key]) => key), 'teamMembers', 'githubUrl', 'demoUrl'];
 
 const projectIncludes = {
@@ -36,10 +29,11 @@ const projectIncludes = {
 function caseData(body) {
   return {
     title: textValue(body, 'title', { required: true, max: 180, label: 'project title' }),
-    summary: textValue(body, 'summary', { max: 450, label: 'short description' }),
-    ...Object.fromEntries(detailFields.map(([key, label]) => [key, textValue(body, key, { max: 5000, label })])),
-    githubUrl: optionalUrl(body, 'githubUrl', 'source repository'),
-    demoUrl: optionalUrl(body, 'demoUrl', 'demo or video')
+    summary: textValue(body, 'summary', { max: 450, label: 'project description' }),
+    ...Object.fromEntries(detailFields.filter(([key]) => body?.[key] !== undefined)
+      .map(([key, label]) => [key, textValue(body, key, { max: 5000, label })])),
+    ...(body?.githubUrl !== undefined && { githubUrl: optionalUrl(body, 'githubUrl', 'source repository') }),
+    ...(body?.demoUrl !== undefined && { demoUrl: optionalUrl(body, 'demoUrl', 'demo or video') }),
   };
 }
 
@@ -71,16 +65,11 @@ function teamFields(project, students) {
 }
 
 function projectFields(project, categories, students, { teamSetup = false } = {}) {
-  const groups = detailGroups.map(([title, fields]) => fieldset(title, fields.map(([name, label, hint]) => textarea(name, label, project?.[name], { hint })).join(''))).join('');
   return `${fieldset('Project information', `${input('title', 'Project title', project?.title, { required: true, max: 180 })}
-    ${select('categoryId', 'Category', categoryOptions(categories), project?.categoryId, { required: true, placeholder: 'Select a category' })}
-    ${textarea('summary', 'Short description', project?.summary, { max: 450, rows: 2, hint: 'Write one or two sentences for the QR page. It shows up to 280 characters.' })}`)}
+    ${select('categoryId', 'Category', categoryOptions(categories), project?.categoryId, { required: true, placeholder: 'Select a category' })}`)}
     ${students ? teamFields(project, students) : ''}
-    ${students && !project && !teamSetup ? fieldset('QR sharing', checkbox('publish', 'Enable visitor access when the project is created', false) + '<p>The QR label is generated either way. Enable access once you have consent from everyone on the team.</p>') : ''}
-    ${teamSetup ? '' : `<details class="project-disclosure"><summary>Additional notes and links (optional)</summary><div class="ops-form">
-      ${groups}${fieldset('Project links', `<div class="ops-grid">
-      ${input('githubUrl', 'Source repository URL', project?.githubUrl, { type: 'url', max: 2048 })}
-      ${input('demoUrl', 'Live demo or video URL', project?.demoUrl, { type: 'url', max: 2048 })}</div>`)}</div></details>`}`;
+    ${textarea('summary', 'Project description', project?.summary, { max: 450, rows: 3, hint: 'Describe what the project does in one or two sentences. The QR page shows up to 280 characters with the photos.' })}
+    ${students && !project && !teamSetup ? fieldset('QR sharing', checkbox('publish', 'Enable visitor access when the project is created', false) + '<p>The QR label is generated either way. Enable access once you have consent from everyone on the team.</p>') : ''}`;
 }
 
 function projectUploads(req, project, returnTo, canEdit) {
