@@ -1,6 +1,6 @@
 import { db, projectCode } from './data.js';
 import { schoolPurpose, schoolValues, exhibition } from '../../frontend/src/content.js';
-import { brandLogo, esc, icon, layout, mediaHref, safeHref } from '../../frontend/src/views.js';
+import { brandLogo, esc, icon, layout, mediaHref } from '../../frontend/src/views.js';
 
 function home(req, categories) {
   return layout(req, { title: 'Student innovation exhibition', body: `
@@ -23,7 +23,7 @@ function home(req, categories) {
       <ol class="scan-steps">
         <li><strong>Find the QR label</strong><p>Look beside the prototype or on its display board.</p></li>
         <li><strong>Open your phone camera</strong><p>Point it at the code and tap the link when it appears.</p></li>
-        <li><strong>Explore the project</strong><p>See the team, how they built it, and any photos, videos or documentation.</p></li>
+        <li><strong>Explore the project</strong><p>Meet the team and see a short description and photos of their project.</p></li>
       </ol>
     </section>
     <section class="shell editorial" id="about">
@@ -58,54 +58,17 @@ function home(req, categories) {
     </section>` });
 }
 
-function projectSections(project) {
-  return [
-    { id: 'overview', title: 'Project overview', nav: 'Overview', glyph: 'book', fields: [
-      ['Introduction', project.overview], ['Objectives', project.objectives], ['Problem statement', project.problem],
-      ['Proposed solution', project.solution], ['Target audience', project.audience], ['Real-world applications', project.applications],
-    ] },
-    { id: 'engineering', title: 'Engineering', nav: 'Engineering', glyph: 'chip', fields: [
-      ['Technical details', project.technical], ['Development journey', project.journey], ['Student contribution', project.contribution],
-    ] },
-  ].map((section) => ({ ...section, fields: section.fields.filter(([, value]) => value?.trim()) }))
-    .filter((section) => section.fields.length);
+function projectSummary(project) {
+  const source = project.summary?.trim() || project.overview?.trim() || '';
+  const summary = source.replace(/\s+/g, ' ');
+  if (summary.length <= 280) return summary;
+  const space = summary.lastIndexOf(' ', 279);
+  return `${summary.slice(0, space > 235 ? space : 279).trimEnd()}…`;
 }
 
-function sectionHeading(title, glyph) {
-  return `<div class="project-section-title"><span>${icon(glyph, 22)}</span><h2>${esc(title)}</h2></div>`;
-}
-
-function renderProjectSections(sections) {
-  return sections.map(({ title, id, glyph, fields }) => `<section class="project-section" id="${id}">
-    ${sectionHeading(title, glyph)}
-    <dl>${fields.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd class="preserve-lines">${esc(value)}</dd></div>`).join('')}</dl>
-  </section>`).join('');
-}
-
-function resourceLink({ href, glyph, title, type, external = false }) {
-  return `<li><a href="${href}"${external ? ' rel="noreferrer"' : ''}>
-    <span class="resource-icon">${icon(glyph, 19)}</span><span class="resource-name"><strong>${esc(title)}</strong><small>${type}</small></span>
-    ${icon('arrow', 18)}
-  </a></li>`;
-}
-
-function renderProjectResources(project, linkFor) {
-  const media = project.media || [];
-  const documents = project.documents || [];
-  const github = safeHref(project.githubUrl);
-  const demo = safeHref(project.demoUrl);
-  if (!media.length && !documents.length && !github && !demo) return '';
-  const links = [
-    ...documents.map(({ upload, caption }) => resourceLink({ href: esc(linkFor(upload)), glyph: 'document', title: caption || upload.originalName, type: 'PDF document' })),
-    ...(github ? [resourceLink({ href: github, glyph: 'code', title: 'Source on GitHub', type: 'External link', external: true })] : []),
-    ...(demo ? [resourceLink({ href: demo, glyph: 'globe', title: 'Live demonstration', type: 'External link', external: true })] : []),
-  ];
-  return `<section class="project-section" id="resources">${sectionHeading('Media & documentation', 'document')}
-    ${media.length ? `<div class="project-media">${media.map(({ upload, caption }) => `<figure>
-      ${upload.mimeType.startsWith('video/') ? `<video src="${esc(linkFor(upload))}" controls playsinline preload="metadata" aria-label="${esc(caption || upload.originalName)}"></video>` :
-        `<a href="${esc(linkFor(upload))}"><img src="${esc(linkFor(upload))}" alt="${esc(caption || 'Project photograph')}" loading="lazy"></a>`}
-      ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ''}</figure>`).join('')}</div>` : ''}
-    ${links.length ? `<ul class="project-resources">${links.join('')}</ul>` : ''}</section>`;
+function projectPhoto({ upload, caption }, linkFor, priority = false) {
+  const href = esc(linkFor(upload));
+  return `<a href="${href}"><img src="${href}" alt="${esc(caption || 'Project photo')}" ${priority ? 'fetchpriority="high"' : 'loading="lazy"'}></a>`;
 }
 
 function teamMember(student, role, linkFor) {
@@ -118,18 +81,18 @@ function teamMember(student, role, linkFor) {
 export function projectDetail(req, project, linkFor = mediaHref) {
   const people = [project.student, ...project.members.map(({ student }) => student)];
   const team = people.length > 1 || Boolean(project.teamMembers);
-  const sections = projectSections(project);
-  const resources = renderProjectResources(project, linkFor);
   const teamLabel = team ? 'Project team' : 'Student';
-  const navigation = [{ id: 'team', nav: team ? 'Team' : 'Student' }, ...sections, ...(resources ? [{ id: 'resources', nav: 'Media' }] : [])];
+  const summary = projectSummary(project);
+  const photos = (project.media || []).filter(({ upload }) => upload.mimeType.startsWith('image/'));
+  const cover = project.cover ? { upload: project.cover, caption: `${project.title} project photo` } : photos.shift();
   return layout(req, { title: project.title, kind: 'scan', body: `
     <article class="scan-project">
-      <header class="project-masthead${project.cover ? ' has-cover' : ''}">
+      <header class="project-masthead${cover ? ' has-cover' : ''}">
         <div class="shell project-heading">
           <div class="project-intro">
             <div class="project-meta"><span>${esc(project.category.name)}</span><span>${projectCode(project.id)}</span></div>
             <h1>${esc(project.title)}</h1>
-            ${project.summary ? `<p class="project-summary preserve-lines">${esc(project.summary)}</p>` : ''}
+            ${summary ? `<p class="project-summary">${esc(summary)}</p>` : ''}
           </div>
           <section class="project-team" id="team" aria-labelledby="team-title">
             <header class="team-heading">
@@ -144,13 +107,13 @@ export function projectDetail(req, project, linkFor = mediaHref) {
             </ul>
             ${project.teamMembers && people.length === 1 ? `<p class="preserve-lines team-archived">${esc(project.teamMembers)}</p>` : ''}
           </section>
-          ${project.cover ? `<figure class="project-cover"><img src="${esc(linkFor(project.cover))}" alt="${esc(project.title)} – project cover" fetchpriority="high"></figure>` : ''}
+          ${cover ? `<figure class="project-cover">${projectPhoto(cover, linkFor, true)}</figure>` : ''}
         </div>
       </header>
-      ${navigation.length > 1 ? `<nav class="project-index" aria-label="On this page"><div class="shell">
-        ${navigation.map(({ id, nav }) => `<a href="#${id}">${nav}</a>`).join('')}
-      </div></nav>` : ''}
-      ${sections.length || resources ? `<div class="shell project-detail">${renderProjectSections(sections)}${resources}</div>` : ''}
+      ${photos.length ? `<div class="shell project-gallery"><details class="project-disclosure">
+        <summary>More photos (${photos.length})</summary>
+        <div class="project-media">${photos.map(photo => projectPhoto(photo, linkFor)).join('')}</div>
+      </details></div>` : ''}
     </article>` });
 }
 
