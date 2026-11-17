@@ -74,12 +74,13 @@ function projectFields(project, categories, students, { teamSetup = false } = {}
   const groups = detailGroups.map(([title, fields]) => fieldset(title, fields.map(([name, label, hint]) => textarea(name, label, project?.[name], { hint })).join(''))).join('');
   return `${fieldset('Project information', `${input('title', 'Project title', project?.title, { required: true, max: 180 })}
     ${select('categoryId', 'Category', categoryOptions(categories), project?.categoryId, { required: true, placeholder: 'Select a category' })}
-    ${textarea('summary', 'Short description', project?.summary, { max: 450, rows: 3 })}`)}
+    ${textarea('summary', 'Short description', project?.summary, { max: 450, rows: 2, hint: 'Write one or two sentences for the QR page. It shows up to 280 characters.' })}`)}
     ${students ? teamFields(project, students) : ''}
     ${students && !project && !teamSetup ? fieldset('QR sharing', checkbox('publish', 'Enable visitor access when the project is created', false) + '<p>The QR label is generated either way. Enable access once you have consent from everyone on the team.</p>') : ''}
-    ${teamSetup ? '' : groups + fieldset('Project links', `<div class="ops-grid">
+    ${teamSetup ? '' : `<details class="project-disclosure"><summary>Additional notes and links (optional)</summary><div class="ops-form">
+      ${groups}${fieldset('Project links', `<div class="ops-grid">
       ${input('githubUrl', 'Source repository URL', project?.githubUrl, { type: 'url', max: 2048 })}
-      ${input('demoUrl', 'Live demo or video URL', project?.demoUrl, { type: 'url', max: 2048 })}</div>`)}`;
+      ${input('demoUrl', 'Live demo or video URL', project?.demoUrl, { type: 'url', max: 2048 })}</div>`)}</div></details>`}`;
 }
 
 function projectUploads(req, project, returnTo, canEdit) {
@@ -87,11 +88,16 @@ function projectUploads(req, project, returnTo, canEdit) {
   const action = req.user.role === 'STUDENT' ? '/student/project/files/remove' : returnTo.replace(/\/edit$/, '/files/remove');
   const media = (items, kind) => uploadList(items, canEdit ? item =>
     post(req, action, hidden('kind', kind) + hidden('fileId', item.id), 'Remove', { inline: true, danger: true }) : undefined);
+  const photos = project.media.filter(({ upload }) => upload.mimeType.startsWith('image/'));
+  const videos = project.media.filter(({ upload }) => upload.mimeType.startsWith('video/'));
   return `<div class="ops-grid">${panel('Cover image', `${project.cover ? `<img class="ops-project-image" src="/media/${encodeURIComponent(project.cover.storageKey)}" alt="Project cover">` : empty('No cover image uploaded.')}
       ${canEdit && project.cover ? post(req, action, hidden('kind', 'cover'), 'Remove cover', { inline: true, danger: true }) : ''}
       ${canEdit ? upload(req, { kind: 'project-cover', targetId, returnTo, label: 'Choose a cover image', accept: uploadImage }) : ''}`, 'h3')}
-    ${panel('Photos and videos', media(project.media, 'media') + (canEdit ? upload(req, { kind: 'project-media', targetId, returnTo, label: 'Choose an image or video', accept: `${uploadImage},video/mp4,video/webm`, caption: true }) : ''), 'h3')}
-    ${panel('Documentation', media(project.documents, 'document') + (canEdit ? upload(req, { kind: 'project-document', targetId, returnTo, label: 'Choose a PDF report', accept: 'application/pdf', caption: true }) : ''), 'h3')}</div>`;
+    ${panel('Project photos', media(photos, 'media') + (canEdit ? upload(req, { kind: 'project-media', targetId, returnTo, label: 'Choose a project photo', accept: uploadImage, caption: true }) : ''), 'h3')}</div>
+    <details class="project-disclosure"><summary>Videos and documents (optional)</summary><div class="ops-grid">
+      ${panel('Videos', media(videos, 'media') + (canEdit ? upload(req, { kind: 'project-media', targetId, returnTo, label: 'Choose a video', accept: 'video/mp4,video/webm', caption: true }) : ''), 'h3')}
+      ${panel('Documentation', media(project.documents, 'document') + (canEdit ? upload(req, { kind: 'project-document', targetId, returnTo, label: 'Choose a PDF report', accept: 'application/pdf', caption: true }) : ''), 'h3')}
+    </div></details>`;
 }
 
 function removeProjectFile(app, route) {
