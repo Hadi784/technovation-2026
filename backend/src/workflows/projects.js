@@ -65,7 +65,7 @@ function teamFields(project, students) {
       <div class="team-picker-head"><strong>Additional members</strong><span data-team-count aria-live="polite"></span></div>
       <label hidden data-team-filter>Find a registered student<input type="search" autocomplete="off" placeholder="Search by name or student ID"></label>
       <div class="team-options">${students.map((student) => `<label class="ops-check" data-team-option><input type="checkbox" name="memberIds" value="${student.id}"${selected.has(student.id) ? ' checked' : ''}><span>${esc(student.name)} <small>${studentCode(student.id)}${student.isPublic ? '' : ' · Consent pending'}</small></span></label>`).join('')}</div>
-      <p>Select at least one teammate in addition to the lead student.</p>
+      <p>Leave additional members blank for a solo project.</p>
     </div>
     ${project?.teamMembers ? textarea('teamMembers', 'Archived team names', project.teamMembers, { hint: 'Select registered members above to replace older free-text names.' }) : ''}</div>`);
 }
@@ -118,12 +118,12 @@ function removeProjectFile(app, route) {
 function adminEditor(req, project, categories, students) {
   const teamSetup = !project && req.query.team === '1';
   const returnTo = project ? `${admin}/${project.id}/edit` : `${admin}/new`;
-  const consent = project?.members.length && project.student.isPublic && project.members.every(({ student }) => student.isPublic);
+  const consent = project?.student.isPublic && project.members.every(({ student }) => student.isPublic);
   const shared = project?.status === 'PUBLISHED';
   const statusControls = project ? panel('QR label & visitor access', `<div class="project-label-settings">
     ${project.qrCode?.active ? `<img src="/admin/qr/${project.id}/image" width="96" height="96" alt="Project QR code">` : ''}
     <div><p><strong>${shared && project.qrCode?.active ? 'Ready for visitors' : 'Visitor access is off'}</strong></p>
-    <p>${!project.members.length ? 'Add a second registered student before enabling QR sharing.' : consent ? (project.qrCode?.active ? 'Anyone with the active QR link can open this project while sharing is on.' : 'Enable the label again in QR labels to restore scanning.') : 'Record consent for every registered member before enabling access.'}</p>
+    <p>${consent ? (project.qrCode?.active ? 'Anyone with the active QR link can open this project while sharing is on.' : 'Enable the label again in QR labels to restore scanning.') : 'Record consent for every registered member before enabling access.'}</p>
     <div class="ops-actions">${shared || consent ? post(req, `${admin}/${project.id}/state`, hidden('status', shared ? 'DRAFT' : 'PUBLISHED'), shared ? 'Turn off sharing' : 'Enable QR sharing', { inline: true }) : ''}
     ${button('Preview details', { href: `/admin/qr/${project.id}/preview`, secondary: true })}
     ${button('Team and student login', { href: `${teams}/${project.id}`, secondary: true })}
@@ -144,8 +144,8 @@ async function adminEditorData(req, res, project) {
     db.category.findMany({ where: project ? { OR: [{ active: true }, { id: project.categoryId }] } : { active: true }, orderBy: { name: 'asc' } }),
     db.student.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, isPublic: true } })
   ]);
-  if ((!project && students.length < 2) || categories.length === 0) {
-    return res.send(portal(req, 'Register a project team', panel('Project requirements', `<p>Add at least two students and activate a project category before registering a team.</p>
+  if ((!project && students.length === 0) || categories.length === 0) {
+    return res.send(portal(req, 'Register a project team', panel('Project requirements', `<p>Add at least one student and activate a project category before registering a project.</p>
       <div class="ops-actions">${button('Students', { href: '/admin/students', secondary: true })}${button('Categories', { href: '/admin/categories', secondary: true })}</div>`)));
   }
   return res.send(adminEditor(req, project, categories, students));
@@ -156,8 +156,7 @@ async function ensureCategory(client, id, currentId) {
   if (!category.active && category.id !== currentId) throw new WorkflowError('Choose an active category.');
 }
 
-async function confirmTeam(client, studentId, ids, sharing, { allowLegacySolo = false } = {}) {
-  if (ids.length === 0 && !allowLegacySolo) throw new WorkflowError('Choose at least two registered students for this project.');
+async function confirmTeam(client, studentId, ids, sharing) {
   const students = await client.student.findMany({ where: { id: { in: [studentId, ...ids] } }, select: { id: true, isPublic: true } });
   if (students.length !== ids.length + 1) throw new WorkflowError('Choose registered students for the project team.');
   if (sharing && students.some((student) => !student.isPublic)) {
@@ -221,14 +220,14 @@ export function mountAdminProjects(app) {
   });
 
   app.get(`${admin}/import`, (req, res) => res.send(portal(req, 'Import projects', panel('Project CSV', post(req, `${admin}/import`,
-    `<p>Use <code>studentId,memberIds,category,title</code> for the required columns. Values in <code>category</code> are slugs from the Categories page.</p>
-    <p>Include at least one additional student ID in <code>memberIds</code>. Separate multiple IDs with <code>|</code>. Each imported project gets a QR label with visitor access off.</p>
-    <p>Optional headers include <code>${csvHeaders.filter(name => !['studentId', 'memberIds', 'category', 'title'].includes(name)).join(', ')}</code>.</p>
+    `<p>Use <code>studentId,category,title</code> for the required columns. Values in <code>category</code> are slugs from the Categories page.</p>
+    <p>For group projects, add student IDs to the optional <code>memberIds</code> column. Separate multiple IDs with <code>|</code>. Each imported project gets a QR label with visitor access off.</p>
+    <p>Other optional headers include <code>${csvHeaders.filter(name => !['studentId', 'memberIds', 'category', 'title'].includes(name)).join(', ')}</code>.</p>
     ${csvFields()}`, 'Import projects')),
   { actions: button('All projects', { href: admin, secondary: true }), scripts: ['/portal.js'] })));
 
   app.post(`${admin}/import`, async (req, res) => {
-    const rows = csvInput(req.body, csvHeaders, ['studentId', 'memberIds', 'category', 'title']).map(row => ({
+    const rows = csvInput(req.body, csvHeaders, ['studentId', 'category', 'title']).map(row => ({
       data: { ...caseData(row), ...rosterData(row), studentId: recordId(row.studentId, 'student ID') },
       category: textValue(row, 'category', { required: true, max: 120, label: 'category slug' }),
       members: row.memberIds,
@@ -258,9 +257,9 @@ export function mountAdminProjects(app) {
     const data = { ...caseData(req.body), ...rosterData(req.body), studentId: recordId(req.body?.studentId, 'student ID'), categoryId: numberValue(req.body?.categoryId, 'category') };
     const ids = memberIds(req.body.memberIds, data.studentId);
     await transact(async client => {
-      const project = mustExist(await client.project.findUnique({ where: { id }, include: { _count: { select: { members: true } } } }), 'Project');
+      const project = mustExist(await client.project.findUnique({ where: { id } }), 'Project');
       await ensureCategory(client, data.categoryId, project.categoryId);
-      await confirmTeam(client, data.studentId, ids, project.status === 'PUBLISHED', { allowLegacySolo: project._count.members === 0 });
+      await confirmTeam(client, data.studentId, ids, project.status === 'PUBLISHED');
       const editorRemoved = project.editorStudentId && project.editorStudentId !== data.studentId && !ids.includes(project.editorStudentId);
       if (editorRemoved) await disableEditorAccount(client, project.editorStudentId);
       await client.project.update({ where: { id }, data: {
