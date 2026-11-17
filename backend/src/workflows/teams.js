@@ -27,13 +27,11 @@ function editTeam(req, project) {
     `<p class="ops-notice">${esc(editor.name)} currently signs in as <strong>${esc(emailHint)}</strong>.</p>` :
     '<p>This team has no student editor.</p>';
   const fields = `
-    ${select('studentId', 'Team member with edit access', studentOptions(students), editor?.id, { required: true, placeholder: 'Select one team member' })}
+    ${select('studentId', 'Team member with edit access', studentOptions(students), editor?.id ?? (students.length === 1 ? students[0].id : undefined), { required: true, placeholder: 'Select one team member' })}
     ${input('email', 'Sign-in email address', emailHint, { type: 'email', required: true, max: 254, autocomplete: 'off' })}
     ${input('password', 'Set a password', '', { type: 'password', required: true, minLength: 12, max: 128, autocomplete: 'new-password', hint: 'Share the password privately with the selected student.' })}`;
-  const access = students.length > 1
-    ? explanation + post(req, `${teams}/${id}/editor`, fields, editor ? 'Save editor credentials' : 'Create editor login') +
-      (editor ? `<div class="team-revoke">${post(req, `${teams}/${id}/revoke`, '', 'Revoke student access', { inline: true, danger: true })}</div>` : '')
-    : '<p>Add a second registered student before assigning an editor.</p>';
+  const access = explanation + post(req, `${teams}/${id}/editor`, fields, editor ? 'Save editor credentials' : 'Create editor login') +
+    (editor ? `<div class="team-revoke">${post(req, `${teams}/${id}/revoke`, '', 'Revoke student access', { inline: true, danger: true })}</div>` : '');
   return portal(req, project.teamName || project.title, `<div class="ops-stack">
     ${panel('Team members', table(['Student', 'Participation', 'Project access'], students.map((student, index) => [
       esc(student.name), index === 0 ? 'Lead student' : 'Member', student.id === editor?.id ? 'Assigned editor' : '—',
@@ -66,7 +64,7 @@ export function mountTeams(app) {
     res.send(portal(req, 'Project teams', panel('Team register',
       filters({ q, placeholder: 'Search by team, project or student' }) +
       table(['Team', 'Project', 'Lead student', 'Members', 'Student editor', ''], rows, 'Create a team to register its project.')), {
-      description: 'Create teams of two or more students and issue one editor login per project.',
+      description: 'Register solo and group projects and issue one student editor login per project.',
       actions: button('Student register', { href: '/admin/students', secondary: true }) +
         button('Create team', { href: '/admin/projects/new?team=1' }),
     }));
@@ -83,9 +81,7 @@ export function mountTeams(app) {
     const passwordHash = await hashPassword(passwordValue(req.body));
     await transact(async (client) => {
       const project = mustExist(await client.project.findUnique({ where: { id }, include: teamInclude }), 'Team');
-      const students = roster(project);
-      if (students.length < 2) throw new WorkflowError('Add a second registered student before assigning an editor.');
-      const student = students.find((member) => member.id === studentId);
+      const student = roster(project).find((member) => member.id === studentId);
       if (!student) throw new WorkflowError('Choose an editor from this project team.');
       const otherAssignment = await client.project.findUnique({ where: { editorStudentId: studentId }, select: { id: true } });
       if (otherAssignment && otherAssignment.id !== id) throw new WorkflowError('This student already edits a different project.', 409);
