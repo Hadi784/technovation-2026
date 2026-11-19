@@ -58,12 +58,11 @@ function home(req, categories) {
     </section>` });
 }
 
-function projectSummary(project) {
-  const source = project.summary?.trim() || project.overview?.trim() || '';
-  const summary = source.replace(/\s+/g, ' ');
-  if (summary.length <= 280) return summary;
-  const space = summary.lastIndexOf(' ', 279);
-  return `${summary.slice(0, space > 235 ? space : 279).trimEnd()}…`;
+function shortParagraph(value, limit) {
+  const text = (value || '').trim().replace(/\s+/g, ' ');
+  if (text.length <= limit) return text;
+  const space = text.lastIndexOf(' ', limit - 1);
+  return `${text.slice(0, space > limit - 45 ? space : limit - 1).trimEnd()}…`;
 }
 
 function projectPhoto({ upload, caption }, linkFor, priority = false) {
@@ -82,12 +81,13 @@ export function projectDetail(req, project, linkFor = mediaHref) {
   const people = [project.student, ...project.members.map(({ student }) => student)];
   const team = people.length > 1 || Boolean(project.teamMembers);
   const teamLabel = team ? 'Project team' : 'Student';
-  const summary = projectSummary(project);
+  const summary = shortParagraph(project.summary || project.overview, 280);
+  const description = project.summary?.trim() ? shortParagraph(project.overview, 500) : '';
   const photos = (project.media || []).filter(({ upload }) => upload.mimeType.startsWith('image/'));
   const cover = project.cover ? { upload: project.cover, caption: `${project.title} project photo` } : photos.shift();
   return layout(req, { title: project.title, kind: 'scan', body: `
     <article class="scan-project">
-      <header class="project-masthead${cover ? ' has-cover' : ''}">
+      <header class="project-masthead">
         <div class="shell project-heading">
           <div class="project-intro">
             <div class="project-meta"><span>${esc(project.category.name)}</span><span>${projectCode(project.id)}</span></div>
@@ -107,13 +107,15 @@ export function projectDetail(req, project, linkFor = mediaHref) {
             </ul>
             ${project.teamMembers && people.length === 1 ? `<p class="preserve-lines team-archived">${esc(project.teamMembers)}</p>` : ''}
           </section>
-          ${cover ? `<figure class="project-cover">${projectPhoto(cover, linkFor, true)}</figure>` : ''}
         </div>
       </header>
-      ${photos.length ? `<div class="shell project-gallery"><details class="project-disclosure">
-        <summary>More photos (${photos.length})</summary>
-        <div class="project-media">${photos.map(photo => projectPhoto(photo, linkFor)).join('')}</div>
-      </details></div>` : ''}
+      ${description || cover ? `<div class="shell project-showcase">
+        ${description ? `<section class="project-story" aria-labelledby="project-story-title"><h2 id="project-story-title">About this project</h2><p>${esc(description)}</p></section>` : ''}
+        ${cover ? `<section class="project-gallery" aria-labelledby="project-gallery-title"><header><h2 id="project-gallery-title">Photo library</h2><span>${photos.length + 1} ${photos.length ? 'photos' : 'photo'}</span></header>
+          <figure class="project-cover">${projectPhoto(cover, linkFor, true)}</figure>
+          ${photos.length ? `<details class="project-disclosure"><summary>More photos (${photos.length})</summary><div class="project-media">${photos.map(photo => projectPhoto(photo, linkFor)).join('')}</div></details>` : ''}
+        </section>` : ''}
+      </div>` : ''}
     </article>` });
 }
 

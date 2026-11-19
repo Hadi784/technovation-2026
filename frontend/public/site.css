@@ -159,21 +159,26 @@ main:focus { outline: none; }
 .scan-body .site-header { position: relative; }
 .scan-body .top-bar { min-height: 66px; }
 .project-masthead {
-  background: radial-gradient(ellipse at 84% 8%, #203e6c 0, transparent 52%), #0b172c;
+  background: radial-gradient(ellipse at 90% 12%, #234c58 0, transparent 48%), linear-gradient(125deg, #101c32, #12263a);
   color: #f5f8ff;
   border-bottom: 1px solid #20395e;
 }
-.project-heading { display: grid; grid-template-areas: "intro" "team"; gap: 22px clamp(20px, 4vw, 48px); align-items: start; min-width: 0; padding-block: clamp(32px, 5vw, 64px); }
-.project-masthead.has-cover .project-heading { grid-template-areas: "intro cover" "team cover"; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); }
+.project-heading { display: grid; grid-template-areas: "intro team"; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 24px clamp(20px, 4vw, 48px); align-items: center; min-width: 0; padding-block: clamp(28px, 4vw, 46px); }
 .project-intro { grid-area: intro; min-width: 0; }
 .project-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .project-meta span { padding: 5px 9px; background: #17305a; border: 1px solid #38547e; border-radius: 6px; color: #dce9ff; font-size: .79rem; font-weight: 700; overflow-wrap: anywhere; }
 .project-meta span + span { background: transparent; color: #c7d9fa; font-family: var(--mono); }
-.project-heading h1, .scan-unavailable h1 { max-width: 21ch; font-size: clamp(2.65rem, 5.85vw, 5.35rem); overflow-wrap: anywhere; margin: 14px 0 0; }
+.project-heading h1, .scan-unavailable h1 { max-width: 23ch; font-size: clamp(2.2rem, 4.7vw, 4.2rem); overflow-wrap: anywhere; margin: 14px 0 0; }
 .project-summary { font-size: clamp(1rem, 1.85vw, 1.19rem); max-width: 59ch; color: #c7d7f1; margin-top: 14px; }
-.project-cover { grid-area: cover; align-self: center; display: grid; align-items: center; border: 1px solid #38537a; border-radius: 14px; padding: 5px; overflow: hidden; background: #101e37; }
-.project-cover img { width: 100%; max-height: 345px; object-fit: contain; border-radius: 9px; }
-.project-gallery { padding-block: 12px 20px; }
+.project-showcase { display: grid; gap: 18px; max-width: 1040px; padding-block: 22px 32px; }
+.project-story { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--panel); border-radius: 13px; padding: clamp(17px, 3vw, 25px); }
+.project-story h2, .project-gallery h2 { font-size: 1.5rem; letter-spacing: -.02em; }
+.project-story p { margin-top: 10px; max-width: 78ch; color: var(--muted); font-size: 1rem; line-height: 1.65; }
+.project-gallery { min-width: 0; display: grid; gap: 12px; }
+.project-gallery > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.project-gallery > header span { color: var(--muted); font-size: .85rem; }
+.project-cover { display: grid; align-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 5px; overflow: hidden; background: var(--panel); }
+.project-cover img { width: 100%; max-height: 390px; object-fit: contain; border-radius: 9px; }
 .project-disclosure { min-width: 0; padding: 4px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; }
 .project-disclosure > summary { cursor: pointer; padding-block: 9px; font-weight: 700; }
 .project-disclosure[open] > summary { margin-bottom: 8px; }
@@ -184,7 +189,7 @@ main:focus { outline: none; }
 .team-heading h2 { font-size: clamp(1.35rem, 2.1vw, 1.75rem); overflow-wrap: anywhere; }
 .team-heading p { font-size: .74rem; font-weight: 700; color: #a9ddd4; margin-bottom: 3px; }
 .team-mark { display: grid; place-items: center; flex: 0 0 38px; height: 38px; border: 1px solid #3c7878; border-radius: 11px; color: #a9eee1; background: #214b50; }
-.team-roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 172px), 1fr)); gap: 8px; padding: 0; margin: 12px 0 0; list-style: none; }
+.team-roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 8px; padding: 0; margin: 12px 0 0; list-style: none; }
 .team-roster li { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 8px; border: 1px solid #335264; border-radius: 11px; background: #102336; }
 .team-roster li > div { min-width: 0; }
 .team-roster strong { display: block; font-size: .94rem; line-height: 1.25; overflow-wrap: anywhere; }
@@ -237,11 +242,12 @@ main:focus { outline: none; }
   .poster-visual::after { content: ""; position: absolute; inset: 0; background: linear-gradient(#09162935, transparent 32%); }
   .poster-visual img { object-position: 68% 60%; }
   .scan-guide { margin-top: -11px; gap: 15px; }
-  .project-heading { gap: 12px; padding-block: 18px; }
-  .project-masthead.has-cover .project-heading { grid-template-areas: "intro" "team" "cover"; grid-template-columns: minmax(0, 1fr); }
+  .project-heading { gap: 14px; padding-block: 22px; grid-template-areas: "intro" "team"; grid-template-columns: minmax(0, 1fr); }
   .project-heading h1 { font-size: clamp(1.9rem, 7.8vw, 3.25rem); margin-top: 9px; }
   .project-summary { margin-top: 8px; }
   .project-cover img { max-height: min(235px, 58vw); }
+  .project-showcase { padding-block: 16px 22px; gap: 16px; }
+  .project-story h2, .project-gallery h2 { font-size: 1.3rem; }
   .scan-steps { grid-template-columns: 1fr; }
   .scan-steps li { padding: 0 0 12px 13px; }
   .mission-heading .school-mark { width: 42px; height: 42px; }

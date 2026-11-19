@@ -2,7 +2,7 @@ import { db, projectCode } from '../data.js';
 import { hashPassword } from '../security.js';
 import { disableEditorAccount } from '../team-access.js';
 import { esc } from '../../../frontend/src/views.js';
-import { button, input, panel, portal, post, select, table } from '../../../frontend/src/workflows/views.js';
+import { bulkTable, button, input, panel, portal, post, select, table } from '../../../frontend/src/workflows/views.js';
 import { addAudit, emailValue, filters, mustExist, passwordValue, recordId, saved, searchTerm, studentOptions, transact, WorkflowError } from './shared.js';
 
 const teams = '/admin/students/teams';
@@ -63,7 +63,8 @@ export function mountTeams(app) {
     ]);
     res.send(portal(req, 'Project teams', panel('Team register',
       filters({ q, placeholder: 'Search by team, project or student' }) +
-      table(['Team', 'Project', 'Lead student', 'Members', 'Student editor', ''], rows, 'Create a team to register its project.')), {
+      bulkTable(req, { action: `${teams}/bulk-delete`, noun: 'teams', columns: ['Team', 'Project', 'Lead student', 'Members', 'Student editor', ''],
+        rows, records: projects, message: 'Create a team to register its project.' })), {
       description: 'Register solo and group projects and issue one student editor login per project.',
       actions: button('Student register', { href: '/admin/students', secondary: true }) +
         button('Create team', { href: '/admin/projects/new?team=1' }),

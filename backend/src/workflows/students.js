@@ -1,6 +1,6 @@
 import { db, studentCode } from '../data.js';
 import { esc } from '../../../frontend/src/views.js';
-import { button, checkbox, fieldset, hidden, input, panel, portal, post, select, table, textarea, upload } from '../../../frontend/src/workflows/views.js';
+import { bulkTable, button, checkbox, fieldset, hidden, input, panel, portal, post, select, textarea, upload } from '../../../frontend/src/workflows/views.js';
 import { addAudit, checked, csvFields, csvInput, filters, mustExist, recordId, saved, searchTerm, sendCsv, textValue, transact, WorkflowError } from './shared.js';
 
 const base = '/admin/students';
@@ -59,7 +59,10 @@ export function mountStudents(app) {
     const actions = [button('Project teams', { href: `${base}/teams`, secondary: true }),
       button('Export CSV', { href: `${base}/export.csv`, secondary: true }),
       button('Import CSV', { href: `${base}/import`, secondary: true }), button('Add student', { href: `${base}/new` })].join('');
-    res.send(portal(req, 'Students', panel('Student register', controls + table(['Student ID', 'Name', 'Grade', 'Campus', 'Projects', 'QR consent'], rows, 'No students match these filters.')), { actions }));
+    res.send(portal(req, 'Students', panel('Student register', controls + bulkTable(req, {
+      action: `${base}/bulk-delete`, noun: 'students', columns: ['Student ID', 'Name', 'Grade', 'Campus', 'Projects', 'QR consent'],
+      rows, records: students, message: 'No students match these filters.',
+    })), { actions, description: 'Manage student records, team participation and permission to appear on QR pages.' }));
   });
 
   app.get(`${base}/new`, (req, res) => res.send(editor(req)));

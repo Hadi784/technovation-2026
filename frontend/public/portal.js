@@ -1,3 +1,42 @@
+const navigationToggle = document.querySelector('.ops-nav-toggle');
+if (navigationToggle) {
+  const navigation = document.getElementById('workspace-nav');
+  const compact = window.matchMedia('(max-width: 840px)');
+  function resizeNavigation() {
+    navigationToggle.hidden = !compact.matches;
+    navigation.hidden = compact.matches;
+    navigationToggle.setAttribute('aria-expanded', String(!navigation.hidden));
+  }
+  navigationToggle.addEventListener('click', () => {
+    navigation.hidden = !navigation.hidden;
+    navigationToggle.setAttribute('aria-expanded', String(!navigation.hidden));
+  });
+  compact.addEventListener('change', resizeNavigation);
+  resizeNavigation();
+}
+
+for (const form of document.querySelectorAll('[data-bulk-form]')) {
+  const all = form.querySelector('[data-select-all]');
+  const rows = [...form.querySelectorAll('[data-select-row]')];
+  const count = form.querySelector('[data-selection-count]');
+  const submit = form.querySelector('[data-bulk-submit]');
+  function refreshSelection() {
+    const selected = rows.filter(row => row.checked).length;
+    all.checked = selected === rows.length;
+    all.indeterminate = selected > 0 && selected < rows.length;
+    count.textContent = `${selected} selected${selected > 100 ? ' · Select up to 100 at a time' : ''}`;
+    submit.disabled = selected === 0 || selected > 100;
+    for (const row of rows) row.closest('tr').classList.toggle('is-selected', row.checked);
+  }
+  all.addEventListener('change', () => {
+    for (const row of rows) row.checked = all.checked;
+    refreshSelection();
+  });
+  form.addEventListener('change', refreshSelection);
+  window.addEventListener('pageshow', refreshSelection);
+  refreshSelection();
+}
+
 for (const picker of document.querySelectorAll('[data-team-picker]')) {
   const lead = picker.closest('form').elements.studentId;
   const filter = picker.querySelector('[data-team-filter]');
