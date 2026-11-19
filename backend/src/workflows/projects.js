@@ -3,7 +3,7 @@ import { newProjectLabel } from '../project-access.js';
 import { projectDetail } from '../public.js';
 import { disableEditorAccount, projectEditorWhere } from '../team-access.js';
 import { esc } from '../../../frontend/src/views.js';
-import { badge, button, checkbox, empty, fieldset, hidden, input, panel, portal, post, select, statusLabels, table, textarea, upload } from '../../../frontend/src/workflows/views.js';
+import { badge, bulkTable, button, checkbox, empty, fieldset, hidden, input, panel, portal, post, select, statusLabels, textarea, upload } from '../../../frontend/src/workflows/views.js';
 import { addAudit, categoryFilter, categoryOptions, checked, csvFields, csvInput, filters, mustExist, numberValue, optionalUrl, recordId, saved, searchTerm, sendCsv, studentOptions, textValue, transact, uploadList, WorkflowError } from './shared.js';
 
 const admin = '/admin/projects';
@@ -68,7 +68,8 @@ function projectFields(project, categories, students, { teamSetup = false } = {}
   return `${fieldset('Project information', `${input('title', 'Project title', project?.title, { required: true, max: 180 })}
     ${select('categoryId', 'Category', categoryOptions(categories), project?.categoryId, { required: true, placeholder: 'Select a category' })}`)}
     ${students ? teamFields(project, students) : ''}
-    ${textarea('summary', 'Project description', project?.summary, { max: 450, rows: 3, hint: 'Describe what the project does in one or two sentences. The QR page shows up to 280 characters with the photos.' })}
+    ${textarea('summary', 'Introduction', project?.summary, { max: 450, rows: 2, hint: 'One or two sentences below the title. The QR page shows up to 280 characters.' })}
+    ${textarea('overview', 'About this project', project?.overview, { max: 5000, rows: 3, hint: 'Add one short paragraph explaining how it works or what makes it useful. Up to 500 characters appear before the photo library.' })}
     ${students && !project && !teamSetup ? fieldset('QR sharing', checkbox('publish', 'Enable visitor access when the project is created', false) + '<p>The QR label is generated either way. Enable access once you have consent from everyone on the team.</p>') : ''}`;
 }
 
@@ -186,7 +187,10 @@ export function mountAdminProjects(app) {
     const controls = filters({ q, placeholder: 'Title, project ID, student or category', additional: categoryFilter(categories, categoryId) +
       select('status', 'Status', Object.entries(statusLabels), status, { placeholder: 'All statuses' }) });
     const rows = projects.map(project => [esc(projectCode(project.id)), `<a href="${admin}/${project.id}/edit">${esc(project.title)}</a>`, `${esc(project.student.name)}<small>${project._count.members + 1} on team</small>`, esc(project.category.name), badge(project.status)]);
-    return res.send(portal(req, 'Projects', panel('Project register', controls + table(['Project ID', 'Title', 'Lead student', 'Category', 'Sharing'], rows, 'No projects match these filters.')), { actions }));
+    return res.send(portal(req, 'Projects', panel('Project register', controls + bulkTable(req, {
+      action: `${admin}/bulk-delete`, noun: 'projects', columns: ['Project ID', 'Title', 'Lead student', 'Category', 'Sharing'],
+      rows, records: projects, message: 'No projects match these filters.',
+    })), { actions, description: 'Edit project content, manage QR sharing and review teams.' }));
   });
 
   app.get(`${admin}/new`, (req, res) => adminEditorData(req, res));
