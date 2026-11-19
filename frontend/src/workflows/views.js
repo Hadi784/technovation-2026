@@ -11,19 +11,25 @@ export function portal(req, title, body, { description = '', actions = '', curre
   const student = req.user.role === 'STUDENT';
   const links = student ? [['My project', '/student', 'cube']] : staffLinks;
   const workspaceName = student ? 'Student workspace' : 'Staff workspace';
-  const active = links.filter(([, href]) => current === href || current.startsWith(href + '/')).at(-1);
+  const active = links.filter(([, href]) => current === href || current.startsWith(href + '/'))
+    .sort((a, b) => b[1].length - a[1].length)[0];
+  const groups = student ? [['My workspace', links]] : [['Exhibition', links.slice(0, 5)], ['Management', links.slice(5)]];
+  const deleted = typeof req.query.deleted === 'string' && /^\d{1,3}$/.test(req.query.deleted) ? Number(req.query.deleted) : 0;
   return layout(req, {
     title,
     kind: 'portal',
-    scripts,
+    scripts: ['/portal.js?v=4', ...scripts.filter(src => !src.startsWith('/portal.js'))],
     body: `<div class="ops-shell">
       <aside class="ops-sidebar" aria-label="${workspaceName}">
-        <p class="ops-section-label">${workspaceName}</p>
-        <nav>${links.map(([label, href, glyph]) => `<a href="${href}"${active?.[1] === href ? ' aria-current="page"' : ''}>${icon(glyph, 18)}${esc(label)}</a>`).join('')}</nav>
+        <div class="ops-sidebar-brand">${icon('cube', 24)}<div><strong>TECHNOVATION</strong><small>2026 · Event workspace</small></div></div>
+        <button class="ops-nav-toggle" type="button" aria-expanded="false" aria-controls="workspace-nav" hidden>Workspace navigation</button>
+        <nav id="workspace-nav" aria-label="${workspaceName}">${groups.map(([label, items]) => `<div class="ops-nav-group"><p class="ops-section-label">${label}</p>${items.map(([name, href, glyph]) => `<a href="${href}"${active?.[1] === href ? ' aria-current="page"' : ''}>${icon(glyph, 19)}<span>${esc(name)}</span></a>`).join('')}</div>`).join('')}</nav>
+        <div class="ops-sidebar-account"><span>${esc(req.user.name)}</span><small>${student ? 'Student editor' : 'Administrator'}</small><a href="/">View public website</a></div>
       </aside>
       <div class="ops-main">
-        <header class="ops-heading"><div><h1>${esc(title)}</h1>${description ? `<p>${esc(description)}</p>` : ''}</div>${actions ? `<div class="ops-actions">${actions}</div>` : ''}</header>
+        <header class="ops-heading"><div><p class="ops-breadcrumb">${workspaceName}${active ? ` / ${esc(active[0])}` : ''}</p><h1>${esc(title)}</h1>${description ? `<p>${esc(description)}</p>` : ''}</div>${actions ? `<div class="ops-actions">${actions}</div>` : ''}</header>
         ${req.query.saved === '1' ? '<p class="ops-notice" role="status">Changes saved.</p>' : ''}
+        ${deleted ? `<p class="ops-notice" role="status">${deleted} ${deleted === 1 ? 'record' : 'records'} deleted.</p>` : ''}
         ${body}
       </div>
     </div>`
@@ -84,6 +90,19 @@ export function fieldset(title, contents) {
 export function table(columns, rows, message) {
   return rows.length ? `<div class="ops-table"><table><thead><tr>${columns.map(label => `<th scope="col">${esc(label)}</th>`).join('')}</tr></thead><tbody>
     ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : empty(message);
+}
+
+export function bulkTable(req, { action, noun, columns, rows, records, message }) {
+  if (!rows.length) return empty(message);
+  const selector = '<label class="ops-select-check"><input type="checkbox" data-select-all aria-label="Select all shown records"><span>Select all</span></label>';
+  const selectableRows = rows.map((row, index) => [
+    `<input type="checkbox" name="ids" value="${records[index].id}" aria-label="Select ${esc(records[index].name || records[index].title)}" data-select-row>`, ...row,
+  ]);
+  return `<form action="${esc(action)}" method="post" data-bulk-form>${csrf(req)}
+    <div class="ops-bulk-bar"><div>${selector}<span data-selection-count role="status">0 selected</span></div><button class="ops-button ops-danger" type="submit" data-bulk-submit>Delete selected ${esc(noun)}</button></div>
+    ${table(['Select', ...columns], selectableRows, message)}
+    <p class="ops-table-footer">${records.length} ${esc(noun)} shown. Select up to 100 records, then review the deletion.</p>
+  </form>`;
 }
 
 export function empty(message) {
