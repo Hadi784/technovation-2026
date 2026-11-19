@@ -5,6 +5,7 @@ import { mountAdminProjects, mountStudentProject } from './workflows/projects.js
 import { workflowErrors } from './workflows/shared.js';
 import { mountStudents } from './workflows/students.js';
 import { mountTeams } from './workflows/teams.js';
+import { mountBulkDeletion } from './workflows/bulk.js';
 
 export function mountWorkflows(app) {
   const admin = requireRole('SUPER_ADMIN');
@@ -12,6 +13,7 @@ export function mountWorkflows(app) {
   app.use('/student', requireRole('STUDENT'));
 
   mountAdmin(app);
+  mountBulkDeletion(app);
   mountStudents(app);
   mountTeams(app);
   mountAdminProjects(app);
