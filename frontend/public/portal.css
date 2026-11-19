@@ -1,7 +1,7 @@
 .ops-shell { max-width: 1640px; margin-inline: auto; padding: 24px clamp(16px, 2.6vw, 40px) 4rem; display: grid; grid-template-columns: 238px minmax(0, 1fr); gap: clamp(18px, 2.5vw, 38px); align-items: start; }
 .ops-main { min-width: 0; }
 .ops-sidebar, .ops-panel, .ops-stat { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); box-shadow: 0 5px 18px #112a500a; }
-.ops-sidebar { padding: 18px 12px; position: sticky; top: 6.3rem; max-height: calc(100dvh - 7.5rem); overflow: auto; background: linear-gradient(165deg, #172d48, #0d1c31 75%); color: #f3f7ff; border-color: #2b4263; }
+.ops-sidebar { padding: 18px 12px; position: sticky; top: 6.3rem; max-height: calc(100dvh - 7.5rem); overflow: auto; scrollbar-width: thin; scrollbar-color: #516c86 transparent; background: linear-gradient(165deg, #172d48, #0d1c31 75%); color: #f3f7ff; border-color: #2b4263; }
 .ops-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 22px; }
 .ops-sidebar-brand > svg { color: #8ddbd1; flex-shrink: 0; }
 .ops-sidebar-brand strong { display: block; font: 800 1.08rem/1.2 var(--display); letter-spacing: .01em; }
