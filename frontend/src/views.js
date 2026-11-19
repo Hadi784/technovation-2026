@@ -104,9 +104,9 @@ export function layout(req, { title, body, kind = 'public', scripts = [] }) {
 <title>${title ? `${esc(title)} | ` : ''}TECHNOVATION 2026 — 3.0</title>
 <meta name="description" content="Discover student projects in robotics, AI, automation and engineering at Usman Public School System.">
 <link rel="icon" href="${esc(schoolLogoUrl(req))}">
-<link rel="stylesheet" href="/site.css?v=8">
+<link rel="stylesheet" href="/site.css?v=9">
 <link rel="stylesheet" href="/utility.css?v=6">
-${kind === 'portal' ? '<link rel="stylesheet" href="/portal.css?v=6">' : ''}
+${kind === 'portal' ? '<link rel="stylesheet" href="/portal.css?v=8">' : ''}
 <script src="/site.js?v=4" defer></script>
 ${scripts.filter((src) => typeof src === 'string' && src.startsWith('/') && !src.startsWith('//')).map((src) => `<script src="${esc(src)}" defer></script>`).join('')}
 </head><body class="${kind}-body">
